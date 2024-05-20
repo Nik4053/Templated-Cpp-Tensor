@@ -44,11 +44,20 @@ void modifyTensor(){
     const size_t dim3 =2;
     TensorAllocator<float,dim3,dim2,dim1> allocator;
     auto t = allocator.createTensor();
-    t.set(1);
+    t.set(2);
 
     TensorAllocator<float,dim3,dim2,dim1> allocator2;
     auto t2 = allocator2.createTensor();
-    t2.set(2.0);
+    t[1][1][1] = -23;
+    auto expr = t+ 3*t/2; // performance warning: t+ 3.0*t/2.0 slower than t+ 3.0/2.0*t as 3/2 is a simple non array division
+    t2.set(expr); 
+    t2.print();
+    t.print();
+    std::cout << "expr: " << expr << std::endl;
+    std::cout << "tensor: " << t2 << std::endl;
+    auto dot = (t*t2).sum();
+    std::cout << "dot: " << dot << std::endl;
+    std::cout << "dot2: " << t.dot(t2) << std::endl;
 
     // Tensor.operator+=()
     t += 10;

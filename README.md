@@ -4,6 +4,29 @@
 This class is designed to show the capabilities of C++ template metaprogramming and is not intended for production use.
 While it has the potential to be very efficient, it can also contribute to very long compile times and unreadable error messages.
 
+## Installation
+Simply include the file `tensorlib/tensor.hpp` in your project.
+
+## Example usage
+```cpp
+#include "tensorlib/tensor.hpp"
+int main(){
+    float data[4*3];
+    Tensor<float, 4,3> t(data);
+    t.set(3.2); // set all elements to 3.2
+    t[1][1] = 100.0; // set element at index 1,1 to 2.0
+    t.print(); // print the tensor
+    std::cout << t << std::endl; // print the tensor
+    t += 2 * t + 3; // perform elementwise operations
+    auto expr = t + 2 * t + 3; // create an expression
+    t.set(expr); // set the tensor to the expression
+    std::cout << expr << std::endl; // print the expression
+    float sum = expr.sum(); // sum all elements of expression
+    auto t2 = t.reshape<3,4>(); // reshape the tensor
+}
+```
+
+
 ## Introduction
 After finding myself writing the same tensor class over and over again, I decided to create a reusable C++ tensor class. 
 This class is designed to be simple and easy to use, while still being efficient. 
