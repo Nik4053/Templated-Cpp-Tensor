@@ -10,7 +10,7 @@
 
 
 
-#include <iostream>
+#include <iosfwd>
 #include <assert.h>
 #include <iomanip>      // std::setprecision
 #include <numeric>      // std::accumulate
@@ -190,124 +190,77 @@ namespace internal{
   }
 };
 
-template <typename T, std::size_t DIM>
-class Tensor<T, DIM> : public internal::expressions::TExpr<Tensor<T, DIM>,DIM>{
+
+template <typename T, std::size_t DIM, std::size_t... DIMS>
+class Tensor<T, DIM, DIMS...> : public internal::expressions::TExpr<Tensor<T, (DIM * ... * DIMS)>, (DIM * ... * DIMS)>
+{
 private:
 public:
   T *data = nullptr;
-  constexpr static size_t SIZE = DIM;
-  constexpr static size_t RANK = 1;
-  template <std::size_t ...NDIMS>
-  Tensor(const Tensor<float,NDIMS...>& other){ static_assert(SIZE == Tensor<float,NDIMS...>::SIZE); this->data = other.data;};
+	constexpr static size_t RANK = 1 + sizeof...(DIMS);
+  constexpr static size_t SIZE = (DIM * ... * DIMS);
   Tensor(T *data) : data(data) {}
-  constexpr static size_t idx(size_t x) { assert(x < DIM); return x; }
-  HOSTDEVICE T operator[](size_t x) const {assert(x < DIM); return data[x];}
-  HOSTDEVICE T& operator[](size_t x) {assert(x < DIM); return data[x];}
-  HOSTDEVICE T operator()(size_t x) const {assert(x < DIM); return data[idx(x)];}
-  HOSTDEVICE T& operator()(size_t x) {assert(x < DIM); return data[idx(x)];}
+  Tensor(const Tensor<T,DIM,DIMS...>& other){ this->data = other.data;};
+
+  template <typename ...Args>
+  constexpr static size_t idx(size_t x, Args ... args) { assert(x < DIM); 
+    if constexpr (RANK == 1) return x;
+    else return x*internal::genTen<T,DIMS...>::type::SIZE + internal::genTen<T,DIMS...>::type::idx(args...) ;
+  }
+  auto operator[](size_t x) const { assert(x < DIM);  
+    if constexpr (RANK == 1) return data[x];
+    else { typename internal::genTen<T,DIMS...>::type t(data+x*internal::genTen<T,DIMS...>::type::SIZE); return t; }
+  }
+  
+  decltype(auto) operator[](size_t x) { assert(x < DIM); 
+    if constexpr (RANK == 1) return data[x];
+    else { typename internal::genTen<T,DIMS...>::type t(data+x*internal::genTen<T,DIMS...>::type::SIZE); return t; }
+  }
+
+
+	template <typename ...Args>
+  HOSTDEVICE T operator()(size_t x, Args ... args) const {assert(x < DIM); 
+    if constexpr (RANK == 1) return data[x];
+    else return data[idx(x,args...)];
+  }
+	template <typename ...Args>
+  HOSTDEVICE T& operator()(size_t x, Args ... args) {assert(x < DIM); 
+    if constexpr (RANK == 1) return data[x];
+    else return data[idx(x,args...)];
+  }
+  Tensor<T,SIZE> flatten() const {Tensor<T,SIZE> t(data); return t; }
   template <std::size_t ...NDIMS>
-  Tensor<T,NDIMS...> reshape() const{static_assert(Tensor<T,NDIMS...>::SIZE == SIZE,"SIZE of reshaped Tensor has to stay the same!"); Tensor<T,NDIMS...> t(data); return t; }
+  Tensor<T,NDIMS...> reshape() const {static_assert(Tensor<T,NDIMS...>::SIZE == SIZE,"SIZE of reshaped Tensor has to stay the same!"); Tensor<T,NDIMS...> t(data); return t; }
   void set(const T& val){ for(size_t i=0; i < SIZE; i++) data[i] = val; }
-  // void set(const Tensor<T,DIM>& other) { for(size_t i=0; i < SIZE; i++) data[i] = other[i]; } // moved to expressions
+  // void set(const Tensor<T,SIZE>& other) { this->flatten().set(other); } // moved to expressions
   template <class A>
-	void set(const internal::expressions::TExpr<A,DIM>& a) { for(int i=0;i<SIZE;++i) data[i] = (~a)[i]; }
+	void set(const internal::expressions::TExpr<A,SIZE>& a) { for(int i=0;i<SIZE;++i) data[i] = (~a)[i]; }
   void setZero(){ const T zero = static_cast<T>(0); this->set(zero); }
-  // T max() const { return *std::max_element(data, data + SIZE); } // moved to expressions
-  // T min() const { return *std::min_element(data, data + SIZE); }
-  // T sum() const { return std::accumulate(data, data + SIZE, 0.0); }
-  bool operator==(const T& rhs){ for (size_t i =0; i< DIM; i++) { if(this->operator[](i)!=rhs)return false;}; return true; }
-  bool operator==(const Tensor<T, DIM>& rhs){ for (size_t i =0; i< DIM; i++) { if(this->operator[](i)!=rhs[i])return false;}; return true; }
-  Tensor<T, DIM>& operator+=(const T& rhs){ for (size_t i =0; i< DIM; i++) this->operator[](i)+=rhs; return *this; }
-  Tensor<T, DIM>& operator+=(const Tensor<T, DIM>& rhs){ for (size_t i =0; i< DIM; i++) this->operator[](i)+=rhs[i]; return *this; }
-  Tensor<T, DIM>& operator-=(const T& rhs){ for (size_t i =0; i< DIM; i++) this->operator[](i)-=rhs; return *this; }
-  Tensor<T, DIM>& operator-=(const Tensor<T, DIM>& rhs){ for (size_t i =0; i< DIM; i++) this->operator[](i)-=rhs[i]; return *this; }
-  Tensor<T, DIM>& operator*=(const T& rhs){ for (size_t i =0; i< DIM; i++) this->operator[](i)*=rhs; return *this; }
-  Tensor<T, DIM>& operator*=(const Tensor<T, DIM>& rhs){ for (size_t i =0; i< DIM; i++) this->operator[](i)*=rhs[i]; return *this; }
-  Tensor<T, DIM>& operator/=(const T& rhs){ for (size_t i =0; i< DIM; i++) this->operator[](i)/=rhs; return *this; }
-  Tensor<T, DIM>& operator/=(const Tensor<T, DIM>& rhs){ for (size_t i =0; i< DIM; i++) this->operator[](i)/=rhs[i]; return *this; }
+  bool operator==(const T& rhs){ for (size_t i =0; i < SIZE; i++) { if(this->data[i]!=rhs) return false;}; return true; }
+  bool operator==(const Tensor<T, SIZE>& rhs){ for (size_t i =0; i< SIZE; i++) { if(this->data[i]!=rhs[i])return false;}; return true; }
+  Tensor& operator+=(const T& rhs){ for (size_t i =0; i< SIZE; i++) this->data[i]+=rhs; return *this; }
+  Tensor& operator+=(const Tensor<T, SIZE>& rhs){ for (size_t i =0; i< SIZE; i++) this->data[i]+=rhs[i]; return *this; }
+  Tensor& operator-=(const T& rhs){ for (size_t i =0; i< SIZE; i++) this->data[i]-=rhs; return *this; }
+  Tensor& operator-=(const Tensor<T, SIZE>& rhs){ for (size_t i =0; i< SIZE; i++) this->data[i]-=rhs[i]; return *this; }
+  Tensor& operator*=(const T& rhs){ for (size_t i =0; i< SIZE; i++) this->data[i]*=rhs; return *this; }
+  Tensor& operator*=(const Tensor<T, SIZE>& rhs){ for (size_t i =0; i< SIZE; i++) this->data[i]*=rhs[i]; return *this; }
+  Tensor& operator/=(const T& rhs){ for (size_t i =0; i< SIZE; i++) this->data[i]/=rhs; return *this; }
+  Tensor& operator/=(const Tensor<T, SIZE>& rhs){ for (size_t i =0; i< SIZE; i++) this->data[i]/=rhs[i]; return *this; }
   template <class A>
-  Tensor<T, DIM>& operator+=(const internal::expressions::TExpr<A,DIM>& rhs){ for (size_t i =0; i< DIM; i++) this->operator[](i)+=(~rhs)[i]; return *this; }
+  Tensor& operator+=(const internal::expressions::TExpr<A,SIZE>& rhs){ for (size_t i =0; i< SIZE; i++) this->data[i]+=(~rhs)[i]; return *this; }
   template <class A>
-  Tensor<T, DIM>& operator-=(const internal::expressions::TExpr<A,DIM>& rhs){ for (size_t i =0; i< DIM; i++) this->operator[](i)-=(~rhs)[i]; return *this; }
+  Tensor& operator-=(const internal::expressions::TExpr<A,SIZE>& rhs){ for (size_t i =0; i< SIZE; i++) this->data[i]-=(~rhs)[i]; return *this; }
   template <class A>
-  Tensor<T, DIM>& operator*=(const internal::expressions::TExpr<A,DIM>& rhs){ for (size_t i =0; i< DIM; i++) this->operator[](i)*=(~rhs)[i]; return *this; }
+  Tensor& operator*=(const internal::expressions::TExpr<A,SIZE>& rhs){ for (size_t i =0; i< SIZE; i++) this->data[i]*=(~rhs)[i]; return *this; }
   template <class A>
-  Tensor<T, DIM>& operator/=(const internal::expressions::TExpr<A,DIM>& rhs){ for (size_t i =0; i< DIM; i++) this->operator[](i)/=(~rhs)[i]; return *this; }
+  Tensor& operator/=(const internal::expressions::TExpr<A,SIZE>& rhs){ for (size_t i =0; i< SIZE; i++) this->data[i]/=(~rhs)[i]; return *this; }
+  void print(int precision=5){ std::cout<<std::setprecision(precision)<< *this <<std::endl; }
   /*
   DELETE COPY ASSIGNMENT OPERATOR. This is to avoid confusion. If you want to copy a Tensor use set() instead.
   Would allow A = expr (would copy all elements to A) and A = B (would only copy the pointer and discard pointer to data of A). This results in confusing behavior. Use set() instead.
   */
-  void operator=(const Tensor<T, DIM>&) = delete;
-  
-  void print(int precision=5){ std::cout <<std::fixed<<std::setprecision(precision)<< *this <<std::endl;  }
+  void operator=(const Tensor&) = delete;
 
-  template <std::size_t ODIM>
-  void copyAsPadded( const Tensor<T,ODIM>& unpaddedT) 
-  {
-    static_assert(DIM >= ODIM,"DIM >= ODIM");
-    static_assert((DIM - ODIM) % 2 == 0,"(DIM - ODIM) % 2 == 0");
-    const size_t padding = (DIM - ODIM)/2;
-    for(size_t i=0; i < ODIM; i++){
-      this->operator[](padding+i) = unpaddedT[i];
-    }
-  }
-  template <std::size_t PDIM>
-  Tensor<T,PDIM> createPaddedCopy( T* paddedData) const
-  {
-    static_assert(PDIM >= DIM,"PDIM >= DIM");
-    static_assert((PDIM - DIM) % 2 == 0,"(PDIM - DIM) % 2 == 0");
-    const size_t padding = (PDIM - DIM)/2;
-    Tensor<T,PDIM> pt(paddedData);
-    pt.copyAsPadded(*this);
-    return pt;
-  }
-};
-
-
-template <typename T, std::size_t DIM, std::size_t... DIMS>
-class Tensor<T,DIM,DIMS...> : public internal::expressions::TExpr<Tensor<T, DIM * (DIMS * ...)>, DIM * (DIMS * ...)>{
-private:
-public:
-	T *data = nullptr;
-	constexpr static size_t SIZE = DIM * (DIMS * ...);
-	constexpr static size_t RANK = 1 + sizeof...(DIMS);
-	Tensor(T *data) : data(data) {}
-  Tensor(const Tensor<T,DIM,DIMS...>& other){ this->data = other.data;};	
-	template <typename ...Args>
-	constexpr static size_t idx(size_t x, Args ... args) { assert(x < DIM); return x*internal::genTen<T,DIMS...>::type::SIZE + internal::genTen<T,DIMS...>::type::idx(args...) ; }
-	typename internal::genTen<T,DIMS...>::type operator[](size_t x) const { assert(x < DIM);  typename internal::genTen<T,DIMS...>::type t(data+x*internal::genTen<T,DIMS...>::type::SIZE); return t; }
-	template <typename ...Args>
-  HOSTDEVICE T operator()(size_t x, Args ... args) const {assert(x < DIM); return data[idx(x,args...)];}
-	template <typename ...Args>
-  HOSTDEVICE T& operator()(size_t x, Args ... args) {assert(x < DIM); return data[idx(x, args...)];}
-  Tensor<T,SIZE> flatten() const {Tensor<T,SIZE> t(data); return t; }
-  template <std::size_t ...NDIMS>
-  Tensor<T,NDIMS...> reshape() const {static_assert(Tensor<T,NDIMS...>::SIZE == SIZE,"SIZE of reshaped Tensor has to stay the same!"); Tensor<T,NDIMS...> t(data); return t; }
-  void set(const T& val){ this->flatten().set(val); }
-  // void set(const Tensor<T,SIZE>& other) { this->flatten().set(other); } // moved to expressions
-  template <class A>
-	void set(const internal::expressions::TExpr<A,SIZE>& a) { this->flatten().set(a); }
-  void setZero(){ this->flatten().setZero(); }
-  bool operator==(const T& rhs){ return this->flatten()==rhs; }
-  bool operator==(const Tensor<T,SIZE>& rhs){ return this->flatten()==rhs;  }
-  Tensor<T,DIM,DIMS...>& operator+=(const T& rhs){ this->flatten()+=rhs; return *this; }
-  Tensor<T,DIM,DIMS...>& operator+=(const Tensor<T,SIZE>& rhs){ this->flatten()+=rhs; return *this; }
-  Tensor<T,DIM,DIMS...>& operator-=(const T& rhs){ this->flatten()-=rhs; return *this; }
-  Tensor<T,DIM,DIMS...>& operator-=(const Tensor<T,SIZE>& rhs){ this->flatten()-=rhs; return *this; }
-  Tensor<T,DIM,DIMS...>& operator*=(const T& rhs){ this->flatten()*=rhs; return *this; }
-  Tensor<T,DIM,DIMS...>& operator*=(const Tensor<T,SIZE>& rhs){ this->flatten()*=rhs; return *this; }
-  Tensor<T,DIM,DIMS...>& operator/=(const T& rhs){ this->flatten()/=rhs; return *this; }
-  Tensor<T,DIM,DIMS...>& operator/=(const Tensor<T,SIZE>& rhs){ this->flatten()/=rhs; return *this; }
-  template <class A>
-  Tensor<T,DIM,DIMS...>& operator+=(const internal::expressions::TExpr<A,SIZE>& rhs){ this->flatten()+=rhs; return *this; }
-  template <class A>
-  Tensor<T,DIM,DIMS...>& operator-=(const internal::expressions::TExpr<A,SIZE>& rhs){ this->flatten()-=rhs; return *this; }
-  template <class A>
-  Tensor<T,DIM,DIMS...>& operator*=(const internal::expressions::TExpr<A,SIZE>& rhs){ this->flatten()*=rhs; return *this; }
-  template <class A>
-  Tensor<T,DIM,DIMS...>& operator/=(const internal::expressions::TExpr<A,SIZE>& rhs){ this->flatten()/=rhs; return *this; }
-  void print(int precision=5){ std::cout<<std::setprecision(precision)<< *this <<std::endl; }
-  void operator=(const Tensor<T, DIM, DIMS...>&) = delete;
   /*
     Copies the unpadded Tensor into this Tensor. The unpadded Tensor has to be smaller or equal to this Tensor.
     The unpadded Tensor will be centered in this Tensor. The padding will be left untouched.
@@ -320,8 +273,8 @@ public:
     static_assert((DIM - ODIM) % 2 == 0,"(DIM - ODIM) % 2 == 0");
     const size_t padding = (DIM - ODIM)/2;
     for(size_t i=0; i < ODIM; i++){
-      auto tmp = unpaddedT[i];
-      this->operator[](padding+i).copyAsPadded(tmp);
+      if constexpr (RANK == 1) this->operator[](padding+i) = unpaddedT[i];
+      else this->operator[](padding+i).copyAsPadded(unpaddedT[i]);
     }
   }
   /*
