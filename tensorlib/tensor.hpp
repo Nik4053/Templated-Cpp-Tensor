@@ -114,6 +114,22 @@ namespace internal{
       return TExprMinus<A,B,SIZE>(~a,~b);
     }
 
+    // self minus ie.: return -a
+    template <class A,  size_t SIZE>
+    class TExprSelfMinus : public TExpr<TExprSelfMinus<A,SIZE>,SIZE >{
+      const A a_;
+    public:
+      TExprSelfMinus(const A& a) : a_(a) {}
+      auto operator[](int i) const {
+        return -a_[i]; 
+      };
+    };
+
+    template <class A, size_t SIZE>
+    inline TExprSelfMinus<A,SIZE> operator- (const TExpr<A,SIZE>& a){
+      return TExprSelfMinus<A,SIZE>(~a);
+    }
+
     // mul
     template <class A, class B,  size_t SIZE>
     class TExprMul : public TExpr<TExprMul<A,B,SIZE>,SIZE >{
