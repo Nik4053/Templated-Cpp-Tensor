@@ -275,17 +275,7 @@ public:
   template <class A>
 	void set(const internal::expressions::TExpr<A,SIZE>& a) { for(int i=0;i<SIZE;++i) data[i] = (~a)[i]; }
   void setZero(){ const T zero = static_cast<T>(0); this->set(zero); }
-  
-  // equality operators
-  bool operator==(const T& rhs){ for (size_t i =0; i < SIZE; i++) { if(this->data[i]!=rhs) return false;}; return true; }
-  bool operator==(const Tensor<T, SIZE>& rhs){  if(data == rhs.data) return true; for (size_t i =0; i< SIZE; i++) { if(this->data[i]!=rhs[i])return false;}; return true; }
-  template <class A>
-  bool operator==(const internal::expressions::TExpr<A,SIZE>& rhs){ for (size_t i =0; i< SIZE; i++) { if(this->data[i]!=rhs[i])return false;}; return true; }
-  bool operator!=(const T& rhs){ return !(*this == rhs); }
-  bool operator!=(const Tensor<T, SIZE>& rhs){ return !(*this == rhs); }
-  template <class A>
-  bool operator!=(const internal::expressions::TExpr<A,SIZE>& rhs){ return !(*this == rhs); }
-
+  // TODO: Remove *= operators. Use set() instead. Reason: Confusing behavior. A = B or A = A * 2 breaks. A *= 2 works. MAYBE all assignments should be done with set() to avoid confusion.
   // +=, -=, *=, /= operators for simple types
   Tensor& operator+=(const T& rhs){ set(*this + rhs); return *this; }
   Tensor& operator-=(const T& rhs){ set(*this - rhs); return *this; }
@@ -339,6 +329,28 @@ public:
     return pt;
   }
 };
+
+// equality operators for simple types
+template <class T, class A, size_t SIZE,typename = std::enable_if_t<std::is_arithmetic<T>::value>>
+bool operator==(const internal::expressions::TExpr<A,SIZE>& a, const T rhs){ for (size_t i =0; i< SIZE; i++) { if(a[i]!=rhs)return false;}; return true; }
+template <class T, class A, size_t SIZE,typename = std::enable_if_t<std::is_arithmetic<T>::value>>
+bool operator!=(const internal::expressions::TExpr<A,SIZE>& a, const T rhs){ return !(a == rhs); }
+// equality operators for simple types (reverse)
+template <class T, class A, size_t SIZE,typename = std::enable_if_t<std::is_arithmetic<T>::value>>
+bool operator==(const T rhs, const internal::expressions::TExpr<A,SIZE>& a){ for (size_t i =0; i< SIZE; i++) { if(a[i]!=rhs)return false;}; return true; }
+template <class T, class A, size_t SIZE,typename = std::enable_if_t<std::is_arithmetic<T>::value>>
+bool operator!=(const T rhs, const internal::expressions::TExpr<A,SIZE>& a){ return !(rhs == a); }
+// equality operators for expressions
+template <class A, class B, size_t SIZE>
+bool operator==(const internal::expressions::TExpr<A,SIZE>& a, const internal::expressions::TExpr<B,SIZE>& b){ for (size_t i =0; i< SIZE; i++) { if(a[i]!=b[i])return false;}; return true; }
+template <class A, class B, size_t SIZE>
+bool operator!=(const internal::expressions::TExpr<A,SIZE>& a, const internal::expressions::TExpr<B,SIZE>& b){ return !(a == b); }
+// equality operators for Tensors
+template <typename T, std::size_t SIZE>
+bool operator==(const Tensor<T, SIZE>& a, const Tensor<T, SIZE>& b){ if(a.data == b.data) return true; for (size_t i =0; i< SIZE; i++) { if(a[i]!=b[i])return false;}; return true; }
+template <typename T, std::size_t SIZE>
+bool operator!=(const Tensor<T, SIZE>& a, const Tensor<T, SIZE>& b){ return !(a == b); }
+
 
 template <typename T, std::size_t DIM, std::size_t... DIMS>
 std::ostream& operator<<(std::ostream& os, const Tensor<T,DIM,DIMS...>& t)
