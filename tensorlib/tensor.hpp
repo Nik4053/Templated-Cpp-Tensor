@@ -63,6 +63,18 @@ namespace internal{
       auto dot(const TExpr<B,SIZE>& b) const { return (*this * b).sum(); }
     };
 
+    // function support: support for sin, cos etc. functions
+    template <typename T, class A,  size_t SIZE>
+    class TExprFunc : public TExpr<TExprFunc<T,A,SIZE>,SIZE >{
+      const A a_;
+      T (*func)(T);
+    public:
+      TExprFunc(T (*func)(T),const A& a) : a_(a) , func(func) {}
+      auto operator[](int i) const {
+        return func(a_[i]); 
+      };
+    };
+
     // used for single values. Multiply array by 3 etc.
     template <typename T, size_t SIZE>
     class TValueExpr : public TExpr<TValueExpr<T,SIZE>,SIZE>{
@@ -202,10 +214,21 @@ namespace internal{
     template <class A, class T,typename = std::enable_if_t<std::is_arithmetic<T>::value>, size_t SIZE>
     inline TExprDiv<A,TValueExpr<T,SIZE>,SIZE> operator/ (const TExpr<A,SIZE>& a, const T t){
       return TExprDiv<A,TValueExpr<T,SIZE>,SIZE>(~a,~Tval<SIZE>(t));
-}
+    }
   }
 };
 
+template<class T>
+struct TFunc{
+    T (*func) (T);
+    TFunc(T (*func) (T)){
+        this->func = func;
+    }
+    template <class A,  size_t SIZE>
+    auto operator()(const internal::expressions::TExpr<A,SIZE>& a) const {
+        return internal::expressions::TExprFunc<T,A,SIZE>(func, ~a);
+    };
+};
 
 template <typename T, std::size_t DIM, std::size_t... DIMS>
 class Tensor<T, DIM, DIMS...> : public internal::expressions::TExpr<Tensor<T, (DIM * ... * DIMS)>, (DIM * ... * DIMS)>
@@ -252,24 +275,32 @@ public:
   template <class A>
 	void set(const internal::expressions::TExpr<A,SIZE>& a) { for(int i=0;i<SIZE;++i) data[i] = (~a)[i]; }
   void setZero(){ const T zero = static_cast<T>(0); this->set(zero); }
+  
+  // equality operators
   bool operator==(const T& rhs){ for (size_t i =0; i < SIZE; i++) { if(this->data[i]!=rhs) return false;}; return true; }
-  bool operator==(const Tensor<T, SIZE>& rhs){ for (size_t i =0; i< SIZE; i++) { if(this->data[i]!=rhs[i])return false;}; return true; }
-  Tensor& operator+=(const T& rhs){ for (size_t i =0; i< SIZE; i++) this->data[i]+=rhs; return *this; }
-  Tensor& operator+=(const Tensor<T, SIZE>& rhs){ for (size_t i =0; i< SIZE; i++) this->data[i]+=rhs[i]; return *this; }
-  Tensor& operator-=(const T& rhs){ for (size_t i =0; i< SIZE; i++) this->data[i]-=rhs; return *this; }
-  Tensor& operator-=(const Tensor<T, SIZE>& rhs){ for (size_t i =0; i< SIZE; i++) this->data[i]-=rhs[i]; return *this; }
-  Tensor& operator*=(const T& rhs){ for (size_t i =0; i< SIZE; i++) this->data[i]*=rhs; return *this; }
-  Tensor& operator*=(const Tensor<T, SIZE>& rhs){ for (size_t i =0; i< SIZE; i++) this->data[i]*=rhs[i]; return *this; }
-  Tensor& operator/=(const T& rhs){ for (size_t i =0; i< SIZE; i++) this->data[i]/=rhs; return *this; }
-  Tensor& operator/=(const Tensor<T, SIZE>& rhs){ for (size_t i =0; i< SIZE; i++) this->data[i]/=rhs[i]; return *this; }
+  bool operator==(const Tensor<T, SIZE>& rhs){  if(data == rhs.data) return true; for (size_t i =0; i< SIZE; i++) { if(this->data[i]!=rhs[i])return false;}; return true; }
   template <class A>
-  Tensor& operator+=(const internal::expressions::TExpr<A,SIZE>& rhs){ for (size_t i =0; i< SIZE; i++) this->data[i]+=(~rhs)[i]; return *this; }
+  bool operator==(const internal::expressions::TExpr<A,SIZE>& rhs){ for (size_t i =0; i< SIZE; i++) { if(this->data[i]!=rhs[i])return false;}; return true; }
+  bool operator!=(const T& rhs){ return !(*this == rhs); }
+  bool operator!=(const Tensor<T, SIZE>& rhs){ return !(*this == rhs); }
   template <class A>
-  Tensor& operator-=(const internal::expressions::TExpr<A,SIZE>& rhs){ for (size_t i =0; i< SIZE; i++) this->data[i]-=(~rhs)[i]; return *this; }
+  bool operator!=(const internal::expressions::TExpr<A,SIZE>& rhs){ return !(*this == rhs); }
+
+  // +=, -=, *=, /= operators for simple types
+  Tensor& operator+=(const T& rhs){ set(*this + rhs); return *this; }
+  Tensor& operator-=(const T& rhs){ set(*this - rhs); return *this; }
+  Tensor& operator*=(const T& rhs){ set(*this * rhs); return *this; }
+  Tensor& operator/=(const T& rhs){ set(*this / rhs); return *this; }
+  // +=, -=, *=, /= operators for Expressions
   template <class A>
-  Tensor& operator*=(const internal::expressions::TExpr<A,SIZE>& rhs){ for (size_t i =0; i< SIZE; i++) this->data[i]*=(~rhs)[i]; return *this; }
+  Tensor& operator+=(const internal::expressions::TExpr<A,SIZE>& rhs){ set(*this + rhs); return *this; }
   template <class A>
-  Tensor& operator/=(const internal::expressions::TExpr<A,SIZE>& rhs){ for (size_t i =0; i< SIZE; i++) this->data[i]/=(~rhs)[i]; return *this; }
+  Tensor& operator-=(const internal::expressions::TExpr<A,SIZE>& rhs){ set(*this - rhs); return *this; }
+  template <class A>
+  Tensor& operator*=(const internal::expressions::TExpr<A,SIZE>& rhs){ set(*this * rhs); return *this; }
+  template <class A>
+  Tensor& operator/=(const internal::expressions::TExpr<A,SIZE>& rhs){ set(*this / rhs); return *this; }
+
   void print(int precision=5){ std::cout<<std::setprecision(precision)<< *this <<std::endl; }
   /*
   DELETE COPY ASSIGNMENT OPERATOR. This is to avoid confusion. If you want to copy a Tensor use set() instead.
