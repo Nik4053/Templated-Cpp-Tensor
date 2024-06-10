@@ -2,6 +2,7 @@
 #pragma once
 #include "../tensor.hpp" 
 
+// TODO: make only one class TensorAllocator
 
 namespace tel{
   template <typename T, std::size_t... DIMS>
