@@ -505,4 +505,18 @@ namespace tel{
     Tensor<T,DIM_Ay*DIM_Bx> C_flatten(C.data);
     return Matmul(A,B,C_flatten,zeroC);
   }
+
+  template <typename T, std::size_t DIM>
+  static Tensor<T,DIM,DIM> Transpose(Tensor<T,DIM,DIM> t)
+  {
+      for(size_t i=0; i < DIM; i++){
+          for(size_t j=i; j < DIM; j++){
+              T temp = t(i,j);
+              t(i,j) = t(j,i);
+              t(j,i) = temp;
+          }
+      }
+      return t;
+  }
+
 } // namespace tel
