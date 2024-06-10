@@ -1,8 +1,8 @@
 #include <iostream>
 #include "tensorlib/tensor.hpp"
 #include "tensorlib/cpu/tensoralloc.hpp"
-#include "tensorlib/cpu/tensorhelper.hpp"
 
+using namespace tel;
 
 void allocateTensors(){
     const size_t dim1 =4;
@@ -91,13 +91,13 @@ void specialMathOperations(){
     // t2.set(2.0);
 
     // A @ B = C
-    TensorHelper::Matmul(A,B,C);
+    Matmul(A,B,C);
     A.print();
     B.print();
     C.print();
 
     // Transpose
-    TensorHelper::Transpose(C);
+    Transpose(C);
     C.print();
 
 }
