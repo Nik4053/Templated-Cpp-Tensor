@@ -1,6 +1,7 @@
 /* Copyright (C) 2024 Niklas Heidenreich - All Rights Reserved */
 #pragma once
-#include "../tensor.hpp"
+#include "tensor.hpp"
+
 
 namespace tel{
     template <typename T, std::size_t... DIMS>

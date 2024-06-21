@@ -296,7 +296,7 @@ namespace tel{
     template <class A>
     Tensor& operator/=(const internal::expressions::TExpr<A,SIZE>& rhs){ set(*this / rhs); return *this; }
 
-    void print(int precision=5){ std::cout<<std::setprecision(precision)<< *this <<std::endl; }
+    // void print(int precision=5){ std::cout<<std::setprecision(precision)<< *this <<std::endl; }
     /*
     DELETE COPY ASSIGNMENT OPERATOR. This is to avoid confusion. If you want to copy a Tensor use set() instead.
     Would allow A = expr (would copy all elements to A) and A = B (would only copy the pointer and discard pointer to data of A). This results in confusing behavior. Use set() instead.

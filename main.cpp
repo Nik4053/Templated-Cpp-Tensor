@@ -1,6 +1,6 @@
 #include <iostream>
-#include "tensorlib/tensor.hpp"
-#include "tensorlib/cpu/tensoralloc.hpp"
+#include "tensor.hpp"
+#include "batchedtensor.hpp"
 
 using namespace tel;
 
@@ -11,12 +11,9 @@ void allocateTensors(){
 
     // possible ways to allocate a Tensor
     // 1.
-    TensorAllocator<float,dim3,dim2,dim1> allocator; // will free data on destruction
-    auto t = allocator.createTensor();
-    // 2.
     float data[Tensor<float,dim3,dim2,dim1>::SIZE];
     Tensor<float,dim3,dim2,dim1> t1(data);
-    // 3.
+    // 2.
     float *data2 = new float[Tensor<float,dim3,dim2,dim1>::SIZE];
     Tensor<float,dim3,dim2,dim1> t2(data2);
     free(data2);
@@ -28,12 +25,11 @@ void printTensor(){
     const size_t dim1 =2;
     const size_t dim2 =2;
     const size_t dim3 =2;
-    TensorAllocator<float,dim3,dim2,dim1> allocator;
-    auto t = allocator.createTensor();
+    float data[Tensor<float,dim3,dim2,dim1>::SIZE];
+
+    Tensor<float,dim3,dim2,dim1> t(data);
     t.set(3.2);
 
-    // Tensor.print() 
-    t.print();
     // using std::cout
     std::cout << t << std::endl;
 }
@@ -42,17 +38,17 @@ void modifyTensor(){
     const size_t dim1 =2;
     const size_t dim2 =2;
     const size_t dim3 =2;
-    TensorAllocator<float,dim3,dim2,dim1> allocator;
-    auto t = allocator.createTensor();
+    float data[Tensor<float,dim3,dim2,dim1>::SIZE];
+    Tensor<float,dim3,dim2,dim1> t(data);
     t.set(2);
 
-    TensorAllocator<float,dim3,dim2,dim1> allocator2;
-    auto t2 = allocator2.createTensor();
+    float data2[Tensor<float,dim3,dim2,dim1>::SIZE];
+    Tensor<float,dim3,dim2,dim1> t2(data);
     t[1][1][1] = -23;
     auto expr = t+ 3*t/2; // performance warning: t+ 3.0*t/2.0 slower than t+ 3.0/2.0*t as 3/2 is a simple non array division
     t2.set(expr); 
-    t2.print();
-    t.print();
+    std::cout << t2 << std::endl;
+    std::cout << t << std::endl;
     std::cout << "expr: " << expr << std::endl;
     std::cout << "tensor: " << t2 << std::endl;
     auto dot = (t*t2).sum();
@@ -63,54 +59,73 @@ void modifyTensor(){
     t += 10;
     t += t2;
     t *= t;
-    t.print();
+    std::cout << t << std::endl;
 
     // reshape
     auto t3 = t.reshape<dim3*dim2,dim1>();
-    t3.print();
+    std::cout << t3 << std::endl;
 
     // flatten
     auto t4 = t.flatten();
-    t4.print();
+    std::cout << t4 << std::endl;
 }
 
 void specialMathOperations(){
     const size_t dim1 =2;
     const size_t dim2 =2;
-    TensorAllocator<float,dim2,dim1> allocator;
-    auto A = allocator.createTensor();
+    float dataA[Tensor<float,dim2,dim1>::SIZE];
+    Tensor<float,dim2,dim1> A(dataA);
     A.set(1.0);
 
-    TensorAllocator<float,dim2,dim1> allocator2;
-    auto B = allocator2.createTensor();
+    float dataB[Tensor<float,dim2,dim1>::SIZE];
+    Tensor<float,dim2,dim1> B(dataB);
     B.set(2.0);
     B[0][0] = 3.0;
 
-    TensorAllocator<float,dim2,dim1> allocator3;
-    auto C = allocator3.createTensor();
+    float dataC[Tensor<float,dim2,dim1>::SIZE];
+    Tensor<float,dim2,dim1> C(dataC);
     // t2.set(2.0);
 
     // A @ B = C
     Matmul(A,B,C);
-    A.print();
-    B.print();
-    C.print();
+    std::cout << A << std::endl;
+    std::cout << B << std::endl;
+    std::cout << C << std::endl;
 
     // Transpose
     Transpose(C);
-    C.print();
+    std::cout << C << std::endl;
 
+}
+
+void batchedTensor(){
+    const size_t dim1 =2;
+    const size_t dim2 =2;
+    const size_t batch_size = 2;
+    float data[batch_size*dim2*dim1] = {1,2,3,4,5,6,7,8};
+
+    BatchedTensor<float,dim2,dim1> bt(batch_size,data);
+    bt(1,1,1) = 3;
+    std::cout << bt << std::endl;
+    auto t2 = bt[1];
+    std::cout << t2 << std::endl;
+    auto t3 = bt.reshape<dim2,dim1>();
+    std::cout << t3 << std::endl;
+    auto t4 = bt.reshape<dim2,dim1*2>(1);
+    std::cout << t4 << std::endl;
 }
 
 
 int main(){
-    std::cout << "allocateTensors()" << std::endl;
+    std::cout << "\nallocateTensors()" << std::endl;
     allocateTensors();
-    std::cout << "printTensor()" << std::endl;
+    std::cout << "\nprintTensor()" << std::endl;
     printTensor();
-    std::cout << "modifyTensor()" << std::endl;
+    std::cout << "\nmodifyTensor()" << std::endl;
     modifyTensor();
-    std::cout << "specialMathOperations()" << std::endl;
+    std::cout << "\nspecialMathOperations()" << std::endl;
     specialMathOperations();
+    std::cout << "batchedTensor()" << std::endl;
+    batchedTensor();
 
 }

@@ -1,5 +1,7 @@
 #include <benchmark/benchmark.h>
-#include "tensorlib/cpu/tensorhelper.hpp"
+#include "tensor.hpp"
+
+using namespace tel;
 
 #define DIM 127
 float lhs[Tensor<float,DIM,DIM>::SIZE];
@@ -45,7 +47,7 @@ static void BM_Tensor(benchmark::State& state) {
     Tensor<float,DIM,DIM> rhs_t(rhs);
     Tensor<float,DIM,DIM> result_t(result);
   for (auto _ : state){
-    TensorHelper::Matmul(result_t,lhs_t,rhs_t);
+    Matmul(result_t,lhs_t,rhs_t);
   }
 }
 BENCHMARK(BM_Tensor);

@@ -1,7 +1,5 @@
 CC = g++
 CCFLAGS = -g -std=c++17 -O3 -march=native -isystem benchmark/include -Lbenchmark/build/src -lbenchmark -lpthread
-NVCC = clang++
-NVCCFLAGS = -std=c++17 -lcudart -x cuda
 TARGET = main
 
 .PHONY: all clean
@@ -16,7 +14,4 @@ $(TARGET): $(TARGET).o
 	
 $(TARGET).o: $(TARGET).cpp
 	$(CC) $^ $(CCFLAGS) -c  $@
-# call to compile cuda test 
-cudaTest: cudaTest.cu
-	$(NVCC) $(NVCCFLAGS) $^ -o $@ 
 	
