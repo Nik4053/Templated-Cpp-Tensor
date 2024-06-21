@@ -89,126 +89,16 @@ cout << tensor << endl;                         // print the tensor
 
 ## Helper functions
 I also added some helper functions to make the class more user-friendly. 
-
-
-```cpp
-#include <iostream>
-#include "tensorlib/tensor.hpp"
-#include "tensorlib/cpu/tensoralloc.hpp"
-#include "tensorlib/cpu/tensorhelper.hpp"
-
-
-void allocateTensors(){
-    const size_t dim1 =4;
-    const size_t dim2 =3;
-    const size_t dim3 =1;
-
-    // possible ways to allocate a Tensor
-    // 1.
-    TensorAllocator<float,dim3,dim2,dim1> allocator; // will free data on destruction
-    auto t = allocator.createTensor();
-    // 2.
-    float data[Tensor<float,dim3,dim2,dim1>::SIZE];
-    Tensor<float,dim3,dim2,dim1> t1(data);
-    // 3.
-    float *data2 = new float[Tensor<float,dim3,dim2,dim1>::SIZE];
-    Tensor<float,dim3,dim2,dim1> t2(data2);
-    free(data2);
-    // WARNING: Tensor<float,dim3,dim2,dim1> t2(data2); will not free data2 on destruction!
-    // t2 is now operating on a dangling pointer!!!
-}
-
-void printTensor(){
-    const size_t dim1 =2;
-    const size_t dim2 =2;
-    const size_t dim3 =2;
-    TensorAllocator<float,dim3,dim2,dim1> allocator;
-    auto t = allocator.createTensor();
-    t.set(3.2);
-
-    // Tensor.print() 
-    t.print();
-    // using std::cout
-    std::cout << t << std::endl;
-}
-
-void modifyTensor(){
-    const size_t dim1 =2;
-    const size_t dim2 =2;
-    const size_t dim3 =2;
-    TensorAllocator<float,dim3,dim2,dim1> allocator;
-    auto t = allocator.createTensor();
-    t.set(1);
-
-    TensorAllocator<float,dim3,dim2,dim1> allocator2;
-    auto t2 = allocator2.createTensor();
-    t2.set(2.0);
-
-    // Tensor.operator+=()
-    t += 10;
-    t += t2;
-    t *= t;
-    t.print();
-
-    // reshape
-    auto t3 = t.reshape<dim3*dim2,dim1>();
-    t3.print();
-
-    // flatten
-    auto t4 = t.flatten();
-    t4.print();
-}
-
-void specialMathOperations(){
-    const size_t dim1 =2;
-    const size_t dim2 =2;
-    TensorAllocator<float,dim2,dim1> allocator;
-    auto A = allocator.createTensor();
-    A.set(1.0);
-
-    TensorAllocator<float,dim2,dim1> allocator2;
-    auto B = allocator2.createTensor();
-    B.set(2.0);
-    B[0][0] = 3.0;
-
-    TensorAllocator<float,dim2,dim1> allocator3;
-    auto C = allocator3.createTensor();
-    // t2.set(2.0);
-
-    // A @ B = C
-    TensorHelper::Matmul(A,B,C);
-    A.print();
-    B.print();
-    C.print();
-
-    // Transpose
-    TensorHelper::Transpose(C);
-    C.print();
-
-}
-
-
-int main(){
-    std::cout << "allocateTensors()" << std::endl;
-    allocateTensors();
-    std::cout << "printTensor()" << std::endl;
-    printTensor();
-    std::cout << "modifyTensor()" << std::endl;
-    modifyTensor();
-    std::cout << "specialMathOperations()" << std::endl;
-    specialMathOperations();
-
-}
-```
+See `main.cpp`
 
 ## Expression Templates
 
 Example of the new operations this tensor allows:
 ```cpp
 Tensor<float, 4,3,2> A,B,C,D;                         // create a tensor with 3 dimensions
-D = A + B / C;                                        // add tensors
-D = A + B + Tval<D.SIZE>(4.2f);                       // use constants
-auto expr = A + B / C;                                // create an expression.
+D = A + sin(B / C);                                        // add tensors
+D = A + B + 4.2f;                                     // use constants
+auto expr = A + B / C.max();                                // create an expression.
 float value = expr[0];                                // evaluate the expression at a specific index 
 value = expr[A.idx(1,1,1)];                           // evaluate the expression at a specific index
 
